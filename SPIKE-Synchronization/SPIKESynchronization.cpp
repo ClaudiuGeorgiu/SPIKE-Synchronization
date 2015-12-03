@@ -147,13 +147,13 @@ double SPIKESynchronization::SYNCValue(vector<int> coincidenceVector)
 
     for (int i = 0; i < coincidenceVector.size(); ++i)
     {
-        if (coincidenceVector[i] == 1)
+        if (coincidenceVector[i] == 0)
         {
-            ++syncValue;
             ++totalSpikes;
         }
-        else if (coincidenceVector[i] == 0)
+        else if (coincidenceVector[i] == 1)
         {
+            ++syncValue;
             ++totalSpikes;
         }
     }
@@ -163,21 +163,111 @@ double SPIKESynchronization::SYNCValue(vector<int> coincidenceVector)
 
 double SPIKESynchronization::SYNCDistance(vector<int> coincidenceVector)
 {
-    double syncDistance = 0;
-    double totalSpikes = 0;
+    return 1 - SYNCValue(coincidenceVector);
+}
 
-    for (int i = 0; i < coincidenceVector.size(); ++i)
+vector<vector<double>> SPIKESynchronization::CoincidenceVectorMultivariate(vector<vector<int>> input)
+{
+    vector<vector<int>> coincidenceVectorPairs;
+
+    for (int i = 0; i < input.size(); ++i)
     {
-        if (coincidenceVector[i] == 1)
+        for (int j = i + 1; j < input.size(); ++j)
         {
-            ++syncDistance;
-            ++totalSpikes;
-        }
-        else if (coincidenceVector[i] == 0)
-        {
-            ++totalSpikes;
+            coincidenceVectorPairs.push_back(CoincidenceVector(input[i], input[j]));
         }
     }
 
-    return 1 - (syncDistance / totalSpikes);
+    int multivariateCoeff = input.size() - 1;
+    vector<vector<double>> coincidenceVectorMultivariate;
+
+    for (int i = 0; i < coincidenceVectorPairs.size(); ++i)
+    {
+        coincidenceVectorMultivariate.push_back(vector<double>(coincidenceVectorPairs[i].size(), -1));
+    }
+
+    for (int i = 0; i < coincidenceVectorPairs.size(); ++i)
+    {
+        for (int j = 0; j < coincidenceVectorPairs.size(); ++j)
+        {
+            if (i == j)
+                continue;
+
+            for (int n = 0; n < coincidenceVectorPairs[i].size(); ++n)
+            {
+                if (coincidenceVectorPairs[j][n] != -1)
+                {
+                    if (coincidenceVectorMultivariate[i][n] == -1)
+                        coincidenceVectorMultivariate[i][n] = coincidenceVectorPairs[j][n];
+                    else coincidenceVectorMultivariate[i][n] += coincidenceVectorPairs[j][n];
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < coincidenceVectorMultivariate.size(); ++i)
+    {
+        for (int n = 0; n < coincidenceVectorMultivariate[i].size(); ++n)
+        {
+            if (coincidenceVectorMultivariate[i][n] != -1)
+                coincidenceVectorMultivariate[i][n] /= multivariateCoeff;
+        }
+    }
+
+    return coincidenceVectorMultivariate;
+}
+
+vector<double> SPIKESynchronization::MergeCoincidencesMultivariate(vector<vector<double>> input)
+{
+    int trainSize = 0;
+
+    // The final coincidence vector will have the length of the longest
+    // coincidence vector obtained from a pair of spike trains.
+    for (int n = 0; n < input.size(); ++n)
+    {
+        if (input[n].size() > trainSize)
+            trainSize = input[n].size();
+    }
+
+    vector<double> mergedCoincidenceMultivariate(trainSize, -1);
+
+    for (int i = 0; i < trainSize; ++i)
+    {
+        for (int j = 0; j < input.size(); ++j)
+        {
+            if (input[j][i] != -1 && input[j][i] > mergedCoincidenceMultivariate[i])
+                mergedCoincidenceMultivariate[i] = input[j][i];
+        }
+    }
+
+    return mergedCoincidenceMultivariate;
+}
+
+double SPIKESynchronization::SYNCValueMultivariate(vector<vector<double>> input)
+{
+    double syncValue = 0;
+    double totalSpikes = 0;
+
+    for (int i = 0; i < input.size(); ++i)
+    {
+        for (int n = 0; n < input[i].size(); ++n)
+        {
+            if (input[i][n] == 0)
+            {
+                ++totalSpikes;
+            }
+            else if (input[i][n] > 0)
+            {
+                ++syncValue;
+                ++totalSpikes;
+            }
+        }
+    }
+
+    return syncValue / totalSpikes;
+}
+
+double SPIKESynchronization::SYNCDistanceMultivariate(vector<vector<double>> input)
+{
+    return 1 - SYNCValueMultivariate(input);
 }

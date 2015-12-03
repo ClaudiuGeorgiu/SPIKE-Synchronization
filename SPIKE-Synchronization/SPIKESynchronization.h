@@ -16,6 +16,11 @@ class SPIKESynchronization
         std::vector<int> MergeCoincidences(std::vector<int> input1, std::vector<int> input2);
         double SYNCValue(std::vector<int> coincidenceVector);
         double SYNCDistance(std::vector<int> coincidenceVector);
+
+        std::vector<std::vector<double>> CoincidenceVectorMultivariate(std::vector<std::vector<int>> input);
+        std::vector<double> MergeCoincidencesMultivariate(std::vector<std::vector<double>> input);
+        double SYNCValueMultivariate(std::vector<std::vector<double>> input);
+        double SYNCDistanceMultivariate(std::vector<std::vector<double>> input);
 };
 
 #endif
