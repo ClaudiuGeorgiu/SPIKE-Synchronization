@@ -1,6 +1,8 @@
 #include "SPIKESynchronization.h"
 #include <iostream>
 #include <vector>
+#include <map>
+#include <cfloat>
 #include <algorithm>
 
 using namespace std;
@@ -12,6 +14,12 @@ SPIKESynchronization::SPIKESynchronization()
 SPIKESynchronization::~SPIKESynchronization()
 {
 }
+
+
+
+/*******************************************************************************************************************************/
+/* Used only for vector inputs containing 1 where spikes occur, -1 otherwise.                                                  */
+/*******************************************************************************************************************************/
 
 int SPIKESynchronization::getPreviousSpikeIndex(vector<int> inputTrain, int index)
 {
@@ -71,7 +79,7 @@ double SPIKESynchronization::getTau(vector<int> inputTrain1, vector<int> inputTr
         temp.push_back(index2 - prevSpike2); // v_(j-1) (2)
 
     // If there are no inter-spike intervals.
-    if (temp.size() == 0)
+    if (temp.empty())
         return 0;
 
     // Take the minimum inter-spike interval multiplied by 1/2, as described in the paper.
@@ -100,7 +108,7 @@ vector<int> SPIKESynchronization::CoincidenceVectorPair(vector<int> inputTrain1,
 
         // We set the highest value for the distance between two spikes. This value
         // will be changed if there exist spikes with smaller distance.
-        int minDistance = longestTrain;
+        double minDistance = DBL_MAX;
 
         for (int j = 0; j < trainSize2; ++j)
         {
@@ -118,7 +126,7 @@ vector<int> SPIKESynchronization::CoincidenceVectorPair(vector<int> inputTrain1,
         }
 
         // If the distance between the closest spikes is smaller than the coincidence
-        // windows, this is a coincidence.
+        // window, this is a coincidence.
         if (minDistance < getTau(inputTrain1, inputTrain2, i, jMin))
             coincidenceVector[i] = 1;
         else coincidenceVector[i] = 0;
@@ -127,54 +135,25 @@ vector<int> SPIKESynchronization::CoincidenceVectorPair(vector<int> inputTrain1,
     return coincidenceVector;
 }
 
-vector<int> SPIKESynchronization::MergeCoincidencesPair(vector<int> coincidenceVector1, vector<int> coincidenceVector2)
-{
-    // Check if the two coincidence vectors have the same size.
-    if (coincidenceVector1.size() != coincidenceVector2.size())
-    {
-        cout << "Error: the coincidence vectors don't have the same size.";
-        return vector<int>();
-    }
-
-    // The coincidence vectors in input must have the same size,
-    // so the train size is equal for both.
-    int trainSize = coincidenceVector1.size();
-
-    vector<int> mergedCoincidence(trainSize, -1);
-
-    // Put 1 for coincident spikes.
-    // Put 0 for non coincident spikes.
-    // Put -1 for non-spikes.
-    for (int i = 0; i < trainSize; ++i)
-    {
-        if (coincidenceVector1[i] == 1 || coincidenceVector2[i] == 1)
-            mergedCoincidence[i] = 1;
-        else if (coincidenceVector1[i] == 0 || coincidenceVector2[i] == 0)
-            mergedCoincidence[i] = 0;
-    }
-
-    return mergedCoincidence;
-}
-
-vector<vector<double>> SPIKESynchronization::CoincidenceVectorMultivariate(vector<vector<int>> inputTrains)
+vector<vector<double>> SPIKESynchronization::CoincidenceVectorMultivariate(vector<vector<int>> inputTrainsVector)
 {
     // Contains coincidence vectors for pairs of spike trains.
     vector<vector<vector<int>>> coincidenceVectorPairs;
 
     // Generate the coincidence vector for all the pairs of input trains.
-    for (int i = 0; i < inputTrains.size(); ++i)
+    for (int i = 0; i < inputTrainsVector.size(); ++i)
     {
         // Contains the pairs of the i-th input train.
         coincidenceVectorPairs.push_back(vector<vector<int>>());
 
-        for (int j = 0; j < inputTrains.size(); ++j)
+        for (int j = 0; j < inputTrainsVector.size(); ++j)
         {
             if (i != j)
-                coincidenceVectorPairs[i].push_back(CoincidenceVectorPair(inputTrains[i], inputTrains[j]));
+                coincidenceVectorPairs[i].push_back(CoincidenceVectorPair(inputTrainsVector[i], inputTrainsVector[j]));
         }
     }
 
-    int multivariateCoeff = inputTrains.size() - 1; // N - 1
+    int multivariateCoeff = inputTrainsVector.size() - 1; // N - 1
 
     // In the multivariate case we can have double numbers.
     vector<vector<double>> coincidenceVectorMultivariate;
@@ -230,26 +209,26 @@ vector<vector<double>> SPIKESynchronization::CoincidenceVectorMultivariate(vecto
     return coincidenceVectorMultivariate;
 }
 
-vector<double> SPIKESynchronization::MergeCoincidencesMultivariate(vector<vector<double>> coincidenceVectors)
+vector<double> SPIKESynchronization::MergeCoincidencesMultivariate(vector<vector<double>> coincidenceVectorsVector)
 {
     int trainSize = 0;
 
     // The final coincidence vector will have the length of the longest
     // coincidence vector obtained from a pair of spike trains.
-    for (int n = 0; n < coincidenceVectors.size(); ++n)
+    for (int n = 0; n < coincidenceVectorsVector.size(); ++n)
     {
-        if (coincidenceVectors[n].size() > trainSize)
-            trainSize = coincidenceVectors[n].size();
+        if (coincidenceVectorsVector[n].size() > trainSize)
+            trainSize = coincidenceVectorsVector[n].size();
     }
 
     vector<double> mergedCoincidenceMultivariate(trainSize, -1);
 
     for (int i = 0; i < trainSize; ++i)
     {
-        for (int j = 0; j < coincidenceVectors.size(); ++j)
+        for (int j = 0; j < coincidenceVectorsVector.size(); ++j)
         {
-            if (coincidenceVectors[j][i] != -1 && coincidenceVectors[j][i] > mergedCoincidenceMultivariate[i])
-                mergedCoincidenceMultivariate[i] = coincidenceVectors[j][i];
+            if (coincidenceVectorsVector[j][i] != -1 && coincidenceVectorsVector[j][i] > mergedCoincidenceMultivariate[i])
+                mergedCoincidenceMultivariate[i] = coincidenceVectorsVector[j][i];
         }
     }
 
@@ -284,3 +263,227 @@ double SPIKESynchronization::SYNCDistance(vector<double> coincidenceProfile)
 {
     return 1 - SYNCValue(coincidenceProfile);
 }
+
+/*******************************************************************************************************************************/
+
+
+
+/*******************************************************************************************************************************/
+/* Used only for vector inputs containing the times at which the spikes occur.                                                 */
+/*******************************************************************************************************************************/
+
+int SPIKESynchronization::getPreviousSpikeIndex(vector<double> inputTrain, int index)
+{
+    // Check the validity of the provided index.
+    if (index < 1 || index >= inputTrain.size())
+        return -1;
+
+    return index - 1;
+}
+
+int SPIKESynchronization::getNextSpikeIndex(vector<double> inputTrain, int index)
+{
+    // Check the validity of the provided index.
+    if (index < 0 || index >= inputTrain.size() - 1)
+        return -1;
+
+    return index + 1;
+}
+
+double SPIKESynchronization::getTau(vector<double> inputTrain1, vector<double> inputTrain2, int index1, int index2)
+{
+    // A temporary vector to store the inter-spike intervals.
+    vector<double> temp;
+
+    int nextSpike1 = getNextSpikeIndex(inputTrain1, index1);
+    if (nextSpike1 != -1)
+        temp.push_back(inputTrain1[nextSpike1] - inputTrain1[index1]); // v_i (1)
+
+    int prevSpike1 = getPreviousSpikeIndex(inputTrain1, index1);
+    if (prevSpike1 != -1)
+        temp.push_back(inputTrain1[index1] - inputTrain1[prevSpike1]); // v_(i-1) (1)
+
+    int nextSpike2 = getNextSpikeIndex(inputTrain2, index2);
+    if (nextSpike2 != -1)
+        temp.push_back(inputTrain2[nextSpike2] - inputTrain2[index2]); // v_j (2)
+
+    int prevSpike2 = getPreviousSpikeIndex(inputTrain2, index2);
+    if (prevSpike2 != -1)
+        temp.push_back(inputTrain2[index2] - inputTrain2[prevSpike2]); // v_(j-1) (2)
+
+    // If there are no inter-spike intervals.
+    if (temp.empty())
+        return 0;
+
+    // Take the minimum inter-spike interval multiplied by 1/2, as described in the paper.
+    return 0.5 * (*min_element(begin(temp), end(temp)));
+}
+
+map<double, int> SPIKESynchronization::CoincidenceVectorPair(vector<double> inputTrain1, vector<double> inputTrain2)
+{
+    int trainSize1 = inputTrain1.size();
+    int trainSize2 = inputTrain2.size();
+
+    map<double, int> coincidenceVector;
+
+    // Merge the times contained in the inputs for the coincidence vector.
+    for (int j = 0; j < trainSize1; ++j)
+    {
+        coincidenceVector[inputTrain1[j]] = 0;
+    }
+    for (int j = 0; j < trainSize2; ++j)
+    {
+        coincidenceVector[inputTrain2[j]] = 0;
+    }
+
+    for (int i = 0; i < trainSize1; ++i)
+    {
+        // If the input train is ordered, the furthest spike is the last in the train.
+        int jMin = inputTrain2.size() - 1;
+
+        // We set the highest value for the distance between two spikes. This value
+        // will be changed if there exist spikes with smaller distance.
+        double minDistance = DBL_MAX;
+
+        for (int j = 0; j < trainSize2; ++j)
+        {
+            // Get the closest spike j (2nd spike train) to the current
+            // spike i (1st spike train).
+            if (abs(inputTrain1[i] - inputTrain2[j]) < minDistance)
+            {
+                jMin = j;
+                minDistance = abs(inputTrain1[i] - inputTrain2[j]);
+            }
+        }
+
+        // If the distance between the closest spikes is smaller than the coincidence
+        // window, this is a coincidence.
+        if (minDistance < getTau(inputTrain1, inputTrain2, i, jMin))
+            coincidenceVector[inputTrain1[i]] = 1;
+        else coincidenceVector[inputTrain1[i]] = 0;
+    }
+
+    return coincidenceVector;
+}
+
+vector<map<double, double>> SPIKESynchronization::CoincidenceVectorMultivariate(vector<vector<double>> inputTrainsTime)
+{
+    // Contains coincidence vectors for pairs of spike trains.
+    vector<vector<map<double, int>>> coincidenceVectorPairs;
+
+    // Generate the coincidence vector for all the pairs of input trains.
+    for (int i = 0; i < inputTrainsTime.size(); ++i)
+    {
+        // Contains the pairs of the i-th input train.
+        coincidenceVectorPairs.push_back(vector<map<double, int>>());
+
+        for (int j = 0; j < inputTrainsTime.size(); ++j)
+        {
+            if (i != j)
+                coincidenceVectorPairs[i].push_back(CoincidenceVectorPair(inputTrainsTime[i], inputTrainsTime[j]));
+        }
+    }
+
+    int multivariateCoeff = inputTrainsTime.size() - 1; // N - 1
+ 
+    vector<map<double, double>> coincidenceVectorMultivariate;
+ 
+    for (int h = 0; h < coincidenceVectorPairs.size(); ++h)
+    {
+        coincidenceVectorMultivariate.push_back(map<double, double>());
+
+        for (int i = 0; i < coincidenceVectorPairs[h].size(); ++i)
+        {
+            // Compute the total coincidence counter for each spike in every spike train.
+            for (int j = 0; j < coincidenceVectorPairs[h].size(); ++j)
+            {
+                if (j == 0)
+                {
+                    for (auto const &timeSpikePair : coincidenceVectorPairs[h][j])
+                    {
+                        coincidenceVectorMultivariate[h][timeSpikePair.first] = timeSpikePair.second;
+                    }
+                }
+                else
+                {
+                    for (auto const &timeSpikePair : coincidenceVectorPairs[h][j])
+                    {
+                        coincidenceVectorMultivariate[h][timeSpikePair.first] += timeSpikePair.second;
+                    }
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < coincidenceVectorMultivariate.size(); ++i)
+    {
+        for (auto const &timeSpikePair : coincidenceVectorMultivariate[i])
+        {
+            coincidenceVectorMultivariate[i][timeSpikePair.first] /= multivariateCoeff;
+        }
+    }
+
+    return coincidenceVectorMultivariate;
+}
+
+map<double, double> SPIKESynchronization::MergeCoincidencesMultivariate(vector<map<double, double>> coincidenceVectorsTime)
+{
+    int trainSize = 0;
+
+    // The final coincidence vector will have the length of the longest
+    // coincidence vector obtained from a pair of spike trains.
+    for (int n = 0; n < coincidenceVectorsTime.size(); ++n)
+    {
+        if (coincidenceVectorsTime[n].size() > trainSize)
+            trainSize = coincidenceVectorsTime[n].size();
+    }
+
+    map<double, double> mergedCoincidenceMultivariate;
+
+    for (auto const &timeSpikePair1 : coincidenceVectorsTime[0])
+    {
+        mergedCoincidenceMultivariate[timeSpikePair1.first] = timeSpikePair1.second;
+
+        for (int j = 1; j < coincidenceVectorsTime.size(); ++j)
+        {
+            if (coincidenceVectorsTime[j].count(timeSpikePair1.first) > 0)
+            {
+                if (coincidenceVectorsTime[j][timeSpikePair1.first] > timeSpikePair1.second)
+                    mergedCoincidenceMultivariate[timeSpikePair1.first] = coincidenceVectorsTime[j][timeSpikePair1.first];
+            }
+        }
+    }
+
+    return mergedCoincidenceMultivariate;
+}
+
+double SPIKESynchronization::SYNCValue(map<double, double> coincidenceProfile)
+{
+    double syncValue = 0;
+    double totalSpikes = 0;
+
+    for (auto const &timeSpikePair : coincidenceProfile)
+    {
+        if (timeSpikePair.second == 0)
+        {
+            ++totalSpikes;
+        }
+        else if (timeSpikePair.second > 0)
+        {
+            syncValue += timeSpikePair.second;
+            ++totalSpikes;
+        }
+    }
+
+    if (totalSpikes == 0)
+        return 0;
+
+    return syncValue / totalSpikes;
+}
+
+double SPIKESynchronization::SYNCDistance(map<double, double> coincidenceProfile)
+{
+    return 1 - SYNCValue(coincidenceProfile);
+}
+
+/*******************************************************************************************************************************/
