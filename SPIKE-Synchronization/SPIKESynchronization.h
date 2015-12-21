@@ -6,6 +6,9 @@
 
 class SPIKESynchronization
 {
+    /* Every method is overloaded because one version is used for input vectors containing 1 and -1 and
+     * the other version is used for the inputs containing the times at which the spikes occur. */
+
     protected:
 
         // Get the index of the previous spike in the input vector, starting from the provided index.

@@ -1,8 +1,13 @@
 #include "SPIKESynchronization.h"
-#include <iostream>
+
+// Libraries used for the data types in input.
 #include <vector>
 #include <map>
+
+// Used to get the maximum value of a double number.
 #include <cfloat>
+
+// Used to get the minimum element in a vector.
 #include <algorithm>
 
 using namespace std;
@@ -428,26 +433,19 @@ vector<map<double, double>> SPIKESynchronization::CoincidenceVectorMultivariate(
 
 map<double, double> SPIKESynchronization::MergeCoincidencesMultivariate(vector<map<double, double>> coincidenceVectorsTime)
 {
-    int trainSize = 0;
-
-    // The final coincidence vector will have the length of the longest
-    // coincidence vector obtained from a pair of spike trains.
-    for (int n = 0; n < coincidenceVectorsTime.size(); ++n)
-    {
-        if (coincidenceVectorsTime[n].size() > trainSize)
-            trainSize = coincidenceVectorsTime[n].size();
-    }
-
     map<double, double> mergedCoincidenceMultivariate;
 
     for (auto const &timeSpikePair1 : coincidenceVectorsTime[0])
     {
+        // The coincidence vector of the first input is taken as a starting point for the final coincidence.
         mergedCoincidenceMultivariate[timeSpikePair1.first] = timeSpikePair1.second;
 
+        // Iterate over all the coincidences at a given time.
         for (int j = 1; j < coincidenceVectorsTime.size(); ++j)
         {
             if (coincidenceVectorsTime[j].count(timeSpikePair1.first) > 0)
             {
+                // Take the coincidence with the highest value.
                 if (coincidenceVectorsTime[j][timeSpikePair1.first] > timeSpikePair1.second)
                     mergedCoincidenceMultivariate[timeSpikePair1.first] = coincidenceVectorsTime[j][timeSpikePair1.first];
             }
