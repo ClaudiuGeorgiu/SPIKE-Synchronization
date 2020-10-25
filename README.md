@@ -2,7 +2,7 @@
 
 > C++ implementation of SPIKE-Synchronization algorithm.
 
-[![Codacy](https://api.codacy.com/project/badge/Grade/e73335dc1c4a418fa353697fe79747fe)](https://www.codacy.com/app/ClaudiuGeorgiu/SPIKE-Synchronization)
+[![Codacy](https://app.codacy.com/project/badge/Grade/e73335dc1c4a418fa353697fe79747fe)](https://www.codacy.com/gh/ClaudiuGeorgiu/SPIKE-Synchronization)
 
 This project contains a `C++` implementation of the [SPIKE-Synchronization algorithm](http://arxiv.org/pdf/1502.02027.pdf).
 
